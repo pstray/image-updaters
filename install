@@ -19,7 +19,3 @@ for script in *-update; do
     echo installing $script to $target
     install -D "$script" "$target"
 done
-    
-    
-	
-	
