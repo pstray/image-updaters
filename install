@@ -1,0 +1,25 @@
+#! /bin/bash
+
+cd $(dirname $0)
+
+PREFIX=
+
+[ -f .config ] && . .config
+
+default_PREFIX="$HOME/images"
+
+if [ -z "$PREFIX" ]; then
+    read -e -i "$default_PREFIX" -p "Install dir: " PREFIX
+    PREFIX=${PREFIX%/};
+    echo "PREFIX='$PREFIX'" >> .config
+fi
+
+for script in *-update; do
+    target="$PREFIX/${script//-/\/}"
+    echo installing $script to $target
+    install -D "$script" "$target"
+done
+    
+    
+	
+	
