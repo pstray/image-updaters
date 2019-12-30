@@ -7,7 +7,7 @@ current="$(curl -s https://www.raspberrypi.org/downloads/raspbian/ |
     grep -o '<strong>[[:xdigit:]]*</strong>' |
     sed 's,</*strong>,,g')"
 
-missing=$(comm -23 <(echo "$current" | sort) <(sed 's/ .*//' SHA256SUM 2>/dev/null | sort))
+missing=$(comm -23 <(echo "$current" | sort) <(sed 's/ .*//' SHA256SUMS 2>/dev/null | sort))
 
 if [ -s "$missing" ]; then
     echo "Missing SHA256 sums found..."
@@ -45,8 +45,8 @@ fi
 
 wget -nv --show-progress --trust-server-names -c "${urls[@]}"
 
-touch SHA256SUM
+touch SHA256SUMS
 
-for file in $(comm -23 <(ls *.zip) <(sed 's/^[[:xdigit]]*..//' SHA256SUM | sort)); do
-    sha256sum "$file" >> SHA256SUM
+for file in $(comm -23 <(ls *.zip) <(sed 's/^[[:xdigit]]*..//' SHA256SUMS | sort)); do
+    sha256sum "$file" >> SHA256SUMS
 done
