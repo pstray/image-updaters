@@ -1,0 +1,52 @@
+#! /bin/bash
+
+lftp=$(type -p lftp 2>/dev/null)
+
+current="$(curl -s https://www.raspberrypi.org/downloads/raspbian/ |
+    grep -o '<div[^>]*class="[^"]*sha256[^"]*"[^>]*>.*</div>' |
+    grep -o '<strong>[[:xdigit:]]*</strong>' |
+    sed 's,</*strong>,,g')"
+
+missing=$(comm -23 <(echo "$current" | sort) <(sed 's/ .*//' SHA256SUM 2>/dev/null | sort))
+
+if [ -s "$missing" ]; then
+    echo "Missing SHA256 sums found..."
+else
+    echo "No new SHA256 sums found..."
+    exit
+fi
+
+wget -nv -N http://downloads.raspberrypi.org/raspbian/release_notes.txt
+
+urls=($(curl -s https://www.raspberrypi.org/downloads/raspbian/ |
+	   grep -o 'href="[^"]*//downloads[^"]*/raspbian_[^"]*"' |
+	   sed 's/^href="//;s/"$//' |
+	   sort -u))
+
+if [ -n "$lftp" ]; then
+    turls=($(printf '%s\n' "${urls[@]}" | grep '[.]torrent$'))
+
+    wget -nv --trust-server-names -N "${turls[@]}"
+    date=$(ls *.torrent | grep -o '^....-..-..' | sort -u | tail -n 1)
+    torrents=($( ls $date-*.torrent ))
+    echo "${torrents[@]}"
+
+    rm -f .torrent-done
+    lftp -c "set verbose on;
+    set xfer:max-redirections 16;
+    set torrent:seed-max-time 0;
+    set torrent:port-range 12390-12399;
+    set torrent:timeout 60;
+    set cmd:at-finish;
+    set cmd:at-exit;
+    torrent --only-new ${torrents[*]}"
+
+fi
+
+wget -nv --show-progress --trust-server-names -c "${urls[@]}"
+
+touch SHA256SUM
+
+for file in $(comm -23 <(ls *.zip) <(sed 's/^[[:xdigit]]*..//' SHA256SUM | sort)); do
+    sha256sum "$file" >> SHA256SUM
+done
