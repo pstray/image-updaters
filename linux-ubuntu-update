@@ -5,6 +5,9 @@ arch=
 
 [ -f .config ] && . .config
 
+lftp_path=$(type -p lftp 2>/dev/null)
+zsync_path=$(type -p zsync 2>/dev/null)
+
 arch_filter=$(echo $arch | tr ' ' '|')
 [ -n "$arch_filter" ] && arch_filter="-($arch_filter)[.]"
 
@@ -24,8 +27,6 @@ done
 
 [ $cur == $lts ] && cur=
 
-lftp_path=$(type -p lftp 2>/dev/null)
-zsync_path=$(type -p zsync 2>/dev/null)
 
 shopt -s nullglob
 
