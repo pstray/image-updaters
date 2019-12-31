@@ -31,7 +31,6 @@ if [ -n "$lftp" ]; then
     torrents=($( ls $date-*.torrent ))
     echo "${torrents[@]}"
 
-    rm -f .torrent-done
     lftp -c "set verbose on;
     set xfer:max-redirections 16;
     set torrent:seed-max-time 0;
