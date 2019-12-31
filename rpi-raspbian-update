@@ -1,5 +1,7 @@
 #! /bin/bash
 
+cd $(dirname $0)
+
 lftp=$(type -p lftp 2>/dev/null)
 
 current="$(curl -s https://www.raspberrypi.org/downloads/raspbian/ |
