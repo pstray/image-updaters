@@ -13,11 +13,13 @@ arch_filter=$(echo $arch | tr ' ' '|')
 
 lts=
 cur=
+all=()
 
 for ver in $(curl -s "$base_url" |
 		 grep -o 'href="[0-9][0-9.]*/*"' |
 		 sed 's/href="//;s,/*",,;' |
 		 sort -V); do
+    all+=($ver)
     v=($(echo $ver | tr . ' '))
     if [ $[ ${v[0]}%2 ] == 0 ] && [ $[ 10#${v[1]} ] == 4 ]; then
 	lts=$ver
@@ -25,8 +27,23 @@ for ver in $(curl -s "$base_url" |
     cur=$ver
 done
 
-[ $cur == $lts ] && cur=
+versions=($lts $cur)
 
+versions+=($(comm -12 \
+		  <(printf "%s\n" "${all[@]}" | sort -uV) \
+		  <(printf "%s\n" "$@" | sort -uV)))
+
+versions+=($(comm -12 \
+		  <(printf "%s\n" "${all[@]}" | sort -uV) \
+		  <(ls | sort -uV)))
+
+for v in "$@"; do
+    if [ "$v" == "all" ]; then
+	versions+=("${all[@]}")
+    fi
+done
+
+versions=($(printf "%s\n" "${versions[@]}" | sort -uV))
 
 shopt -s nullglob
 
@@ -38,7 +55,7 @@ missing() {
     return 0
 }
 
-for ver in $lts $cur; do
+for ver in "${versions[@]}"; do
     dir=$(echo $ver | cut -d. -f1-2)
     mkdir -p $dir
     (
