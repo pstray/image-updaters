@@ -39,9 +39,10 @@ missing() {
 }
 
 for ver in $lts $cur; do
-    mkdir -p $ver
+    dir=$(echo $ver | cut -d. -f1-2)
+    mkdir -p $dir
     (
-	cd $ver
+	cd $dir
 	url="${base_url%/}/$ver"
 
 	curl -s "$url/SHA256SUMS" > SHA256SUMS.new
