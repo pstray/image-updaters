@@ -1,0 +1,139 @@
+#! /bin/bash
+
+base_url=http://ftp.uninett.no/pub/linux/ubuntu-iso/
+arch=
+
+[ -f .config ] && . .config
+
+arch_filter=$(echo $arch | tr ' ' '|')
+[ -n "$arch_filter" ] && arch_filter="-($arch_filter)[.]"
+
+lts=
+cur=
+
+for ver in $(curl -s "$base_url" |
+		 grep -o 'href="[0-9][0-9.]*/*"' |
+		 sed 's/href="//;s,/*",,;' |
+		 sort -V); do
+    v=($(echo $ver | tr . ' '))
+    if [ $[ ${v[0]}%2 ] == 0 ] && [ $[ 10#${v[1]} ] == 4 ]; then
+	lts=$ver
+    fi
+    cur=$ver
+done
+
+[ $cur == $lts ] && cur=
+
+lftp_path=$(type -p lftp 2>/dev/null)
+zsync_path=$(type -p zsync 2>/dev/null)
+
+shopt -s nullglob
+
+missing() {
+    local file="$1"
+    local sha=$(grep "[ *]$file\$" SHA256SUMS.new | cut -f1 -d' ')
+    [ -z "$sha" ] && return
+    grep -q "^$sha" SHA256SUMS && return 1
+    return 0
+}
+
+for ver in $lts $cur; do
+    mkdir -p $ver
+    (
+	cd $ver
+	url="${base_url%/}/$ver"
+
+	curl -s "$url/SHA256SUMS" > SHA256SUMS.new
+
+	iso=()
+	torrent=()
+	zsync=()
+
+	for file in $(curl -s "$url/" |
+			   grep -o 'href="ubuntu-[^"]*'"${arch_filter}"'[^"]*"' |
+			   sed 's,href=",,;s,",,' |
+			   sort -u); do
+
+	    case $file in
+		*.iso)
+		    missing "$file" && iso+=($file)
+		    ;;
+		*.zsync)
+		    [ -n "$zsync_path" ] &&
+			missing "${file%.zsync}" &&
+			zsync+=($file)
+		    ;;
+		*.torrent)
+		    [ -n "$lftp_path" ] &&
+			missing "${file%.torrent}" &&
+			torrent+=($file)
+		    ;;
+	    esac
+	done
+
+	rm -f SHA256SUMS.new
+
+	urls=
+	if [ -n "$zsync" ]; then
+	    for zf in "${zsync[@]}"; do
+		args=(-k "$zf")
+
+		u="$url/$zf"
+		iso=${zf%.zsync}
+		if [ ! -f $iso ]; then
+		    pattern=../*/${iso/$ver/*}
+		    last=$(for old in $pattern; do
+			       if (echo $(basename $old); echo $iso) |
+				      sort -VC; then
+				   echo "$old"
+			       fi
+			   done | sort -V | tail -n 1)
+		    if [ -n "$last" ]; then
+			args+=(-i "$last")
+		    fi
+		    for i in *.iso; do
+			args+=(-i "$i")
+		    done
+		fi
+
+		echo "Running zsync $u..."
+		zsync "${args[@]}" "$u"
+		old=${zf%.zsync}.zs-old
+		[ -f "$old" ] && rm -f "$old"
+	    done
+
+	elif [ -n "$torrent" ]; then
+	    urls=($(printf " $url/%s" "${torrent[@]}"))
+
+	    echo "Getting torrents"
+	    wget -nv -N "${urls[@]}"
+
+	    echo "Running lftp in torrent mode..."
+	    lftp -c "set verbose on;
+		set xfer:max-redirections 16;
+		set torrent:seed-max-time 0;
+		set torrent:port-range 12390-12399;
+		set torrent:timeout 60;
+		set cmd:at-finish;
+		set cmd:at-exit;
+		torrent --only-new ${torrent[*]}"
+
+	elif [ -n "$iso" ]; then
+	    urls=($(printf " $url/%s" "${iso[@]}"))
+
+	    wget -nv -N --show-progress "${urls[@]}"
+	else
+	    echo "Nothing new to get for $ver"
+	fi
+
+	if [ -n "$iso" ]; then
+	    (
+		cat SHA256SUMS
+		for file in "${iso[@]}"; do
+		    [ -f "$file" ] && sha256sum -b "$file"
+		done
+	    ) | sort -u > SHA256SUMS.tmp
+	    mv -f SHA256SUMS.tmp SHA256SUMS
+	fi
+    )
+done
