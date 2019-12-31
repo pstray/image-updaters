@@ -58,6 +58,7 @@ missing() {
 
 for ver in "${versions[@]}"; do
     dir=$(echo $ver | cut -d. -f1-2)
+    [ -f "$dir/.skip" ] && continue
     mkdir -p $dir
     (
 	cd $dir
