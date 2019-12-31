@@ -1,7 +1,7 @@
 #! /bin/bash
 
 base_url=http://ftp.uninett.no/pub/linux/ubuntu-iso/
-arch=
+arch=amd64
 
 [ -f .config ] && . .config
 
@@ -71,7 +71,7 @@ for ver in "${versions[@]}"; do
 	zsync=()
 
 	for file in $(curl -s "$url/" |
-			   grep -o 'href="ubuntu-[^"]*'"${arch_filter}"'[^"]*"' |
+			   grep -o -E 'href="ubuntu-[^"]*'"${arch_filter}"'[^"]*"' |
 			   sed 's,href=",,;s,",,' |
 			   sort -u); do
 
