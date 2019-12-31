@@ -2,6 +2,11 @@
 
 cd $(dirname $0)
 
+# Add some debug trace
+exec 5> update.trace
+BASH_XTRACEFD=5
+set -x
+
 base_url=http://ftp.uninett.no/pub/linux/ubuntu-iso/
 arch=amd64
 
