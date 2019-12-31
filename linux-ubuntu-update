@@ -120,8 +120,7 @@ for ver in $lts $cur; do
 
 	elif [ -n "$iso" ]; then
 	    urls=($(printf " $url/%s" "${iso[@]}"))
-
-	    wget -nv -N --show-progress "${urls[@]}"
+	    wget -nv --show-progress -c "${urls[@]}"
 	else
 	    echo "Nothing new to get for $ver"
 	fi
