@@ -14,8 +14,23 @@ if [ -z "$PREFIX" ]; then
     echo "PREFIX='$PREFIX'" >> .config
 fi
 
+shopt -s nullglob
+
 for script in *-update; do
     target="$PREFIX/${script//-/\/}"
-    echo installing $script to $target
+    echo "Installing $script to $target"
     install -D "$script" "$target"
+done
+
+for script in update*; do
+    case "$script" in
+	*~)
+	    :
+	    ;;
+	*)
+	    target="$PREFIX/$script"
+	    echo "Installing $script to $target"
+	    install -D "$script" "$target"
+	    ;;
+    esac
 done
